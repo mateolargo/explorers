@@ -1,0 +1,27 @@
+<html>
+<head>
+<title>Socket Test</title>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="/static/scripts/GameBoard.js"></script>
+<script src="/static/scripts/PlayerControls.js"></script>
+<script src="/static/scripts/Server.js"></script>
+<script src="/static/scripts/Controller.js"></script>
+<script>
+  var controller = new Controller();
+  controller.run();
+  var socket = new io.Socket('');
+  socket.on('connect', function() {console.warn("connected"); doTest();});
+  socket.on('message', function(data) { console.warn(data);});
+  socket.on('disconnect', function() {console.warn("disconnected");});
+  socket.connect();
+
+  function doTest() {
+      socket.send(JSON.stringify({id:0,comm:'get-game-state'}));
+  }
+</script>
+</head>
+<body>
+  Yo, dawg
+</body>
+</html>
