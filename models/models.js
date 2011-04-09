@@ -1,4 +1,4 @@
-(function () {
+(function (){
     var server = false, models;
     if (typeof exports !== 'undefined') {
         _ = require('underscore')._;
@@ -10,67 +10,139 @@
         models = this.models = {};
     }
 
-    models.Card = Backbone.Model.extend({});
+    SILENT = {silent:true};
 
+    //=========================================================================
+    // Game
+    //=========================================================================
+    models.Game = Backbone.Model.extend({
+        defaults: {
+            gameMap: null,
+            players: new Backbone.Collection(),
+            robberLocation: null,
+            whos_turn: null,
+            devCardDeck: new models.Deck()
+        },
 
-    Backbone.Model.prototype.xport = function (opt) {
-        var result = {},
-        settings = _({recurse: true}).extend(opt || {});
+        initialize: function() {
 
-        function process(targetObj, source) {
-            targetObj.id = source.id || null;
-            targetObj.cid = source.cid || null;
-            targetObj.attrs = source.toJSON();
-            _.each(source, function (value, key) {
-            // since models store a reference to their collection
-            // we need to make sure we don't create a circular refrence
-                if (settings.recurse) {
-                  if (key !== 'collection' && source[key] instanceof Backbone.Collection) {
-                    targetObj.collections = targetObj.collections || {};
-                    targetObj.collections[key] = {};
-                    targetObj.collections[key].models = [];
-                    targetObj.collections[key].id = source[key].id || null;
-                    _.each(source[key].models, function (value, index) {
-                      process(targetObj.collections[key].models[index] = {}, value);
-                    });
-                  } else if (source[key] instanceof Backbone.Model) {
-                    targetObj.models = targetObj.models || {};
-                    process(targetObj.models[key] = {}, value);
-                  }
-               }
+        }
+    });
+
+    //=========================================================================
+    // Deck
+    //=========================================================================
+    models.Deck = Backbone.Collection.extend({
+        shuffle: function() {
+            var o = this.toArray();
+            //fisher-yates
+            for(var j, x, i = o.length; i; j = parseInt(Math.random() * i), x = o[--i], o[i] = o[j], o[j] = x);
+            this.refresh(o, SILENT);
+        }
+    });
+
+    //=========================================================================
+    // SOCMap
+    //=========================================================================
+    models.SOCMap = Backbone.Model.extend({
+        defaults: {
+            mapSize: 'small',
+            hexes: new models.Deck(),
+            ports: []
+        },
+        initialize: function() {
+            this.populate(); //setup objects
+            this.generate(); //randomize
+        },
+        populate: function() {
+            var t = models.SOCHex.TYPES;
+            var s = models.SOCHex.SIDES;
+
+            //Define map elements
+            var hexes, nums, ports;
+            if (this.get('mapSize') === 'small') {
+                hexes = [[t.WOOD, 4], [t.BRICK, 3], [t.WHEAT, 4], [t.SHEEP, 4], [t.ORE, 3], [t.DESERT, 1]];
+                ports = [[1, s.NE, t.WOOD], [2, s.W, t.BRICK],
+                         [3, s.NE, t.ANY],  [7, s.NW, t.ANY],
+                         [11, s.E, t.ORE],  [11, s.SW, t.SHEEP],
+                         [12, s.W, t.WHEAT],[16, s.SW, t.ANY],
+                         [18, s.SW, t.ANY] ];
+            } else {
+                hexes = [[t.WOOD, 4], [t.BRICK, 3], [t.WHEAT, 4], [t.SHEEP, 4], [t.ORE, 3], [t.DESERT, 2]];
+                nums = [];
+                ports = [];
+            }
+            
+            //Create Hex objects
+            var hexDeck = new models.Deck();
+            for (var i = 0, ilen = hexes.length; i < ilen; i++) {
+                var res = hexes[i];
+                var resType = res[0];
+                for (var j = 0, jlen = res[1]; j < jlen; j++) {
+                    var hex = new models.SOCHex({type: resType});
+                    hexDeck.add(hex, SILENT);
+                }
+            }
+
+            //Assign to map
+            this.set({hexes: hexDeck, ports: ports}, SILENT);
+        },
+        generate: function() {
+
+            //Randomize hexes
+            this.get('hexes').shuffle();
+
+            //Assign numbers to hexes
+            if (this.get('mapSize') === 'small') {
+                var nums = [4,8,10,5,11,6,9,5,3,11,10,6,12,4,2,8,3,9];
+            } else {
+                var nums = [4,8,10,5,11,6,9,5,3,11,10,6,12,4,2,8,3,9];
+            }
+
+            var desertOffset = 0, DESERT = models.SOCHex.TYPES.DESERT;
+            this.get('hexes').forEach(function(elem, i, list) {
+                if (elem.get('type') == DESERT) {
+                    desertOffset++;
+                } else {
+                    elem.set({'num': nums[i-desertOffset]}, SILENT);
+                }
             });
+        },
+        printMap: function() {
+            return this.get('hexes').map(function(hex){ return hex.toString(); }).join(',');
         }
 
-        process(result, this);
+    });
 
-        return JSON.stringify(result);
-    };
+    //=========================================================================
+    // SOCHex 
+    //=========================================================================
+    models.SOCHex = Backbone.Model.extend({
+        defaults: { type: 0, num: -999 },
+        toString: function() { return '[' + this.get('type') + ', ' + this.get('num') + ']';}
+    
+    }, {//Static properties
+        TYPES: { UNKNOWN:0, WOOD:1, BRICK:2, WHEAT:3, SHEEP:4, ORE:5, DESERT:6, ANY:7 },
+        SIDES: { NE:1, E:2, SE:3, SW:4, W:5, NW:6 }
+    });
+    
+    //=========================================================================
+    // ResourceCard
+    //=========================================================================
+    models.ResourceCard = Backbone.Model.extend({
+        defaults: { type: 0 }
+    });
 
+    //=========================================================================
+    // DevCard
+    //=========================================================================
+    models.DevCard = Backbone.Model.extend({
+        defaults: { type: 0 }
+    
+    }, {//Static properties
+        TYPES: { UNKNOWN:0, VICTORY_POINT:1, KNIGHT:2, YEAR_OF_PLENTY:3, MONOPOLY:4, ROAD_BUILDING:5 }
+    });
+    
+    
 
-    Backbone.Model.prototype.mport = function (data, silent) {
-        function process(targetObj, data) {
-            targetObj.id = data.id || null;
-            targetObj.set(data.attrs, {silent: silent});
-            // loop through each collection
-            if (data.collections) {
-              _.each(data.collections, function (collection, name) {
-                targetObj[name].id = collection.id;
-                _.each(collection.models, function (modelData, index) {
-                  var newObj = targetObj[name]._add({}, {silent: silent});
-                  process(newObj, modelData);
-                });
-              });
-            }
-
-            if (data.models) {
-                _.each(data.models, function (modelData, name) {
-                    process(targetObj[name], modelData);
-                });
-            }
-        }
-
-        process(this, JSON.parse(data));
-
-        return this;
-    };    
 })();

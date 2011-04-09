@@ -4,15 +4,82 @@
         <script src="libs/underscore-min.js"></script>
         <script src="libs/backbone-min.js"></script>
         
-        <!--script src="models/models.js"></script-->
-        <script src="models/game.js"></script>
-</head>
-<body>
-    <script>
-        $(document).ready(function() {
-            var myMap = new models.SOCMap();
-            console.warn(myMap.printMap());
-        });
-    </script>
-</body>
+        <script src="models/backbone_extensions.js"></script>
+        <script src="models/models.js"></script>
+        <script src="views/views.js"></script>
+        <script src="controllers/controllers.js"></script>
+
+        <style>
+            html, body { width:100%, height: 100%; margin:0; padding:0; }
+            #Game { background-color:#EEE; width:100%; height:100%; margin:0 auto; }
+            #Map { position:relative; background-color:#77F; width:90%; height:100%; margin:0 auto; }
+            .hexagon { position:absolute; width:100px;height:100px; }
+            
+            .wood .hex-top { border-bottom-color: #004913; }
+            .wood .hex-mid { background-color: #004913; }
+            .wood .hex-bot { border-top-color: #004913; }
+            
+            .brick .hex-top { border-bottom-color: #5F0000; }
+            .brick .hex-mid { background-color: #5F0000; }
+            .brick .hex-bot { border-top-color: #5F0000; }
+
+            .wheat .hex-top { border-bottom-color: #FFFA56; }
+            .wheat .hex-mid { background-color: #FFFA56; }
+            .wheat .hex-bot { border-top-color: #FFFA56; }
+            
+            .sheep .hex-top { border-bottom-color: #00CA45; }
+            .sheep .hex-mid { background-color: #00CA45; }
+            .sheep .hex-bot { border-top-color: #00CA45; }
+            
+            .ore .hex-top { border-bottom-color: #808080; }
+            .ore .hex-mid { background-color: #808080; }
+            .ore .hex-bot { border-top-color: #808080; }
+
+            .hex-top {
+                border-color: transparent;
+                border-style: solid;
+                border-width: 0 40px 30px;
+                width: 0; height: 0;
+            }
+            .hex-mid {
+                width: 80px;
+                height: 50px; 
+            }
+            .hex-bot {
+                border-color: transparent;
+                border-style: solid;
+                border-width: 30px 40px 0;
+                width: 0; height: 0;
+            }
+
+            .rotate { -moz-transform:rotate(60deg); }
+        </style>
+    </head>
+    <body>
+        <div id="Game">
+            <div id="Map">
+                <div class="hexagon wood">
+                    <div class="hex-top"></div>
+                    <div class="hex-mid"></div>
+                    <div class="hex-bot"></div>
+                </div>
+                <div class="hexagon wheat" style="left:80px;">
+                    <div class="hex-top"></div>
+                    <div class="hex-mid"></div>
+                    <div class="hex-bot"></div>
+                </div>
+                <div class="hexagon sheep" style="top:80px; left:40px;">
+                    <div class="hex-top"></div>
+                    <div class="hex-mid"></div>
+                    <div class="hex-bot"></div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            $(document).ready(function() {
+                var controller = new Controller();
+            });
+        </script>
+    </body>
 </html>
