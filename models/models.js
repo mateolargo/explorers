@@ -1,4 +1,5 @@
 (function (){
+    //console.warn('game.js, models = ', models);
     var server = false, models;
     if (typeof exports !== 'undefined') {
         _ = require('underscore')._;
@@ -9,25 +10,9 @@
     } else {
         models = this.models = {};
     }
+    //console.warn('models = ', models);
 
     SILENT = {silent:true};
-
-    //=========================================================================
-    // Game
-    //=========================================================================
-    models.Game = Backbone.Model.extend({
-        defaults: {
-            gameMap: null,
-            players: new Backbone.Collection(),
-            robberLocation: null,
-            whos_turn: null,
-            devCardDeck: new models.Deck()
-        },
-
-        initialize: function() {
-
-        }
-    });
 
     //=========================================================================
     // Deck
@@ -42,13 +27,51 @@
     });
 
     //=========================================================================
+    // ResourceCard
+    //=========================================================================
+    models.Player = Backbone.Model.extend({
+        defaults: {
+            name: 'Anonymous',
+            color: 'red',
+            unusedBuildings: { },
+            resources: new Backbone.Collection(),
+            devCards: new Backbone.Collection()
+        }
+    }, {//Static properties
+        COLORS: { RED:'red', BLUE:'blue', GREEN:'green', ORANGE:'orange' } 
+    });
+
+    //=========================================================================
+    // Game
+    //=========================================================================
+    models.Game = Backbone.Model.extend({
+        defaults: {
+            mapSize: 'small',
+            players: new Backbone.Collection(),
+            robberLocation: null,
+            whosTurn: null,
+            devCardDeck: new models.Deck(),
+            unusedResourceCards: { }
+        },
+
+        initialize: function() {
+            this.gameMap = new models.SOCMap({mapSize:this.get('mapSize')});
+        },
+
+        getCurrentPlayer: function() {
+            return this.get('players').at(this.get('whosTurn'));
+        }
+    });
+
+    //=========================================================================
     // SOCMap
     //=========================================================================
     models.SOCMap = Backbone.Model.extend({
         defaults: {
             mapSize: 'small',
             hexes: new models.Deck(),
-            ports: []
+            ports: [],
+            placedBuildings: new Backbone.Collection()
         },
         initialize: function() {
             this.populate(); //setup objects
