@@ -27,7 +27,7 @@
     });
 
     //=========================================================================
-    // ResourceCard
+    // Player
     //=========================================================================
     models.Player = Backbone.Model.extend({
         defaults: {
@@ -142,10 +142,24 @@
     //=========================================================================
     models.SOCHex = Backbone.Model.extend({
         defaults: { type: 0, num: -999 },
-        toString: function() { return '[' + this.get('type') + ', ' + this.get('num') + ']';}
+        toString: function() { return '[' + this.get('type') + ', ' + this.get('num') + ']';},
+        getClassName: function() {
+            var t = models.SOCHex.TYPES;
+            switch(this.get('type')) {
+                case t.UNKNOWN: return 'unknown';
+                case t.WOOD: return 'wood';
+                case t.BRICK: return 'brick';
+                case t.WHEAT: return 'wheat';
+                case t.SHEEP: return 'sheep';
+                case t.ORE: return 'ore';
+                case t.DESERT: return 'desert';
+                case t.ANY: return 'any';
+            }
+        }
     
     }, {//Static properties
         TYPES: { UNKNOWN:0, WOOD:1, BRICK:2, WHEAT:3, SHEEP:4, ORE:5, DESERT:6, ANY:7 },
+        CLASS_NAMES: { },
         SIDES: { NE:1, E:2, SE:3, SW:4, W:5, NW:6 }
     });
     
