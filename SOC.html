@@ -13,7 +13,9 @@
             html, body { width:100%, height: 100%; margin:0; padding:0; }
             #Game { background-color:#EEE; width:100%; height:100%; margin:0 auto; }
             #Map { position:relative; background-color:#77F; width:90%; height:100%; margin:0 auto; }
-            .hexagon { position:absolute; width:80px;height:110px; }
+            .hexagon { position:absolute; }
+            .hexagon.small { width:80px; height:110px; }
+            .hexagon.big { width:120px; height:165px; }
             .hex-mid:hover { color:yellow; }
 
             .wood .hex-top { border-bottom-color: #004913; }
@@ -40,27 +42,30 @@
             .desert .hex-mid { background-color: #000000; }
             .desert .hex-bot { border-top-color: #000000; }
 
-            .hex-top {
-                border-color: transparent;
+            .hex-top { border-color: transparent;
                 border-style: solid;
-                border-width: 0 40px 30px;
                 width: 0; height: 0;
             }
+            .small .hex-top { border-width: 0 40px 30px; }
+            .big   .hex-top { border-width: 0 60px 45px; }
+
             .hex-mid {
-                width: 80px;
-                height: 50px;
                 text-align:center;
                 font-family: Verdana, sans-serif;
                 font-weight:bold;
                 font-size:20px;
                 line-height:40px; 
             }
+            .small .hex-mid { width:80px; height:50px; }
+            .big   .hex-mid { width:120px; height:75px; }
+
             .hex-bot {
                 border-color: transparent;
                 border-style: solid;
-                border-width: 30px 40px 0;
                 width: 0; height: 0;
             }
+            .small .hex-bot { border-width: 30px 40px 0; }
+            .big   .hex-bot { border-width: 45px 60px 0; }
 
             .one { }
             .two { }
@@ -68,11 +73,14 @@
             .four { }
             .five { color:red; }
 
-            .dots { background-image: url('dots.png');
-                background-repeat: no-repeat;
-                background-position:80px 0;
-                width:80px; height:10px;
+            .dots { background-repeat: no-repeat;
+                background-position:1000px 0;
+                height:10px;
             }
+
+            .small .dots { background-image: url('dots.png'); width:80px; }
+            .big   .dots { background-image: url('dots_120.png'); width:120x; }
+
             .one .dots { background-position: 0 -40px; }
             .two .dots { background-position: 0 -30px;}
             .three .dots { background-position: 0 -20px;}
@@ -84,9 +92,11 @@
     </head>
     <body>
         <script type="text/html" id="HexTemplate">
-            <div class="hexagon <%= hexType %>" style="top:<%=top%>;left:<%=left%>;">
+            <div class="hexagon <%=hexSize%> <%= hexType %>" style="top:<%=top%>;left:<%=left%>;">
                 <div class="hex-top"></div>
-                <div class="hex-mid <%=hexNumClass%>"><% print(hexNum > 0 ? hexNum : '&nbsp;'); %><div class="dots"></div></div>
+                <div class="hex-mid <%=hexNumClass%>">
+                    <% print(hexNum > 0 ? hexNum : '&nbsp;'); %>
+                    <div class="dots"></div></div>
                 <div class="hex-bot"></div>
             </div>
         </script>
