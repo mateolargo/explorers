@@ -12,7 +12,26 @@
         <style>
             html, body { width:100%, height: 100%; margin:0; padding:0; }
             #Game { background-color:#EEE; width:100%; height:100%; margin:0 auto; }
-            #Map { position:relative; background-color:#77F; width:90%; height:100%; margin:0 auto; }
+            #Map {
+                position:relative;
+                background-color:#77F;
+                width:700px; height:100%;
+                margin:0;
+                float:left;
+            }
+
+            #Players {
+                background-color:#F77;
+                width:400px; height:100%;
+                float:left;
+
+            }
+
+            .player {
+                border-bottom:1px solid black;
+                padding:20px;
+            }
+
             .hexagon { position:absolute; }
             .hexagon.small { width:80px; height:110px; }
             .hexagon.big { width:120px; height:165px; }
@@ -86,11 +105,19 @@
             .three .dots { background-position: 0 -20px;}
             .four .dots { background-position: 0 -10px;}
             .five .dots { background-position: 0 0px;}
-
-            .rotate { -moz-transform:rotate(60deg); }
         </style>
     </head>
     <body>
+        <script type="text/html" id="PlayerT">
+            <div class="player">
+                <div><%=name%></div>
+                <div>Points: <%=points%></div>
+                <div style="float:left;">Resources: </div>
+                <div class="resources"></div>
+                <div style="float:left;">Dev Cards:</div>
+                <div class="dev-cards"></div>
+            </div>
+        </script>
         <script type="text/html" id="HexTemplate">
             <div class="hexagon <%=hexSize%> <%= hexType %>" style="top:<%=top%>;left:<%=left%>;">
                 <div class="hex-top"></div>
@@ -102,21 +129,8 @@
         </script>
         <div id="Game">
             <div id="Map">
-                <div class="hexagon wood">
-                    <div class="hex-top"></div>
-                    <div class="hex-mid"></div>
-                    <div class="hex-bot"></div>
-                </div>
-                <div class="hexagon wheat" style="left:80px;">
-                    <div class="hex-top"></div>
-                    <div class="hex-mid"></div>
-                    <div class="hex-bot"></div>
-                </div>
-                <div class="hexagon sheep" style="top:80px; left:40px;">
-                    <div class="hex-top"></div>
-                    <div class="hex-mid"></div>
-                    <div class="hex-bot"></div>
-                </div>
+            </div>
+            <div id="Players">
             </div>
         </div>
 

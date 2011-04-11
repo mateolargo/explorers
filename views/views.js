@@ -3,36 +3,88 @@ var GameView = Backbone.View.extend({
     initialize: function(options) {
         this.mapView = new MapView({model: this.model.gameMap, el: $('#Map')});
         this.mapView.render();
+
+        this.model.get('players').forEach(function(player, index, players) {
+            var playerView = new PlayerView({model: player});
+            $('#Players').append(playerView.render().el);
+        }, this);
     },
 
     render: function() {
 
-    }
+    },
 
+    promptPlacement: function() {
+        this.mapView._getValidBuildingSpots();
+    }
+});
+
+var PlayerView = Backbone.View.extend({
+
+    initialize: function(options) {
+        _.bindAll(this, 'render', 'renderCards');
+
+        this.model.get('resources').bind('all', this.renderCards);
+        this.model.get('devCards').bind('all', this.renderCards);
+    },
+
+    render: function() {
+        var templateStr = document.getElementById('PlayerT').innerHTML;
+        var context = {
+            id: this.model.id,
+            name: this.model.get('name'),
+            points: 0
+        };
+        var markup = _.template(templateStr, context);
+        this.el = $(markup).get(0);
+
+        this.renderCards();
+
+        return this;
+    },
+
+    renderCards: function() {
+        var rMarkup = this.model.get('resources').map(function(rCard, i, resources) {
+            return '<span>' + rCard.get('type') + '</span>';
+        }, this);
+        this.$('.resources').html('&nbsp;' + rMarkup.join(', '));
+        
+        var dMarkup = this.model.get('devCards').map(function(dCard, i, devCards) {
+            return '<span>' + dCard.get('type') + '</span>';
+        }, this);
+        this.$('.dev-cards').html('&nbsp;' + dMarkup.join(', '));
+    }
 });
 
 var MapView = Backbone.View.extend({
 
     initialize: function(options) {
+        _.bindAll(this, 'render', 'renderBuildings');
+
         var mapSize = this.model.get('mapSize');
+
+        this.model.get('placedBuildings').bind('all', this.renderBuildings); 
         
         //this.hexSize = 'small';
         this.hexSize = 'big';
 
-        this.hexPositionsSmall = this._calculateHexPositions(mapSize, 'small');
-        this.hexPositionsBig = this._calculateHexPositions(mapSize, 'big');
+        this.rowLengthsSmall = [3,4,5,4,3];
+        this.rowLengthsBig = [4,5,6,6,5,4];
+
+        //this.rowIndexesSmall = [3,7,12,16,19];
+        //this.rowIndexesBig = [4,9,15,21,26,30];
+        
+        this.hexPositionsSmall = this._calculateHexPositions(mapSize,
+                                    this.rowLengthsSmall, 'small');
+        this.hexPositionsBig = this._calculateHexPositions(mapSize,
+                                    this.rowLengthsSmall, 'big');
     },
 
-    _calculateHexPositions: function(mapSize, hexSize) {
+    _calculateHexPositions: function(mapSize, rowLengths, hexSize) {
         var positions = [];
-        var rowLengths, rowIndexes, top, left;
         if (mapSize === 'small') {
-            rowLengths = [3,4,5,4,3];
-            rowIndexes = [3,7,12,16,19];
             top = 250; left = 50;
         } else {
-            rowLengths = [4,5,6,6,5,4];
-            rowIndexes = [4,9,15,21,26,30];
             top = 100; left= 100;
         }
 
@@ -73,6 +125,90 @@ var MapView = Backbone.View.extend({
     render: function() {
         var hexMarkup = this._getHexMarkup();
         this.el.html(hexMarkup);
+
+        this.renderBuildings();
+
+        return this;
+    },
+
+    renderBuildings: function() {
+        this.model.get('placedBuildings').forEach(function(building, i, list) {
+            console.warn("rendering building...", building);
+        }, this);
+    },
+
+    _getValidBuildingSpots: function() {
+        //keys will be hex indeces. each key will have an object of the form
+        //{N:1, NE:1, SE:1, S:1, SW:1, NW:1}
+        //a 1 means available, a 2 means already accounted for (ignore it),
+        //a 3 means a building is there, a 4 means a building is adjacent
+        var validSpots = { };
+
+        var rowLengths = this.model.get('mapSize') === 'big' ? 
+            this.rowLengthsBig : this.rowLengthsSmall;
+
+        //This loop enumerates all possible valid spots, ignoring buildings
+        var corner, count = 0;
+        var curRow = 0, curRowLength = rowLengths[0], nextRowLength = rowLengths[1];
+        this.model.get('hexes').forEach(function(hex, i, list) {
+            var doSW = true;
+            var swIndex = i + 1, swSpot;
+            if (count === curRowLength - 1) {
+                swSpot = { }; doSW = false;
+            } else {
+                swSpot = validSpots[swIndex] || { };
+            }
+
+            if (count === curRowLength) {
+                count = 0;
+                nextRowLength = rowLengths[++curRow];
+                curRowLength = nextRowLength;
+            }
+
+            var nwIndex = i + curRowLength, wIndex = nwIndex + 1;
+            var swIndex = i + 1;
+            var curSpot = validSpots[i] || { };
+            var nwSpot = validSpots[nwIndex] || { };
+            var wSpot = validSpots[wIndex] || { };
+
+            for (corner in models.SOCHex.CORNERS) {
+                curSpot[corner] = curSpot[corner] || 1;
+                switch(corner) {
+                    case 'N':
+                        nwSpot['SW'] = nwSpot['SW'] || 2;
+                        break;
+                    case 'NE':
+                        nwSpot['S'] = nwSpot['S'] || 2;
+                        wSpot['NW'] = wSpot['NW'] || 2;
+                        break;
+                    case 'SE':
+                        wSpot['SW'] = wSpot['SW'] || 2;
+                        swSpot['N'] = swSpot['N'] || 2;
+                        break;
+                    case 'S':
+                        swSpot['NW'] = swSpot['NW'] || 2;
+                        break;
+                }
+            }
+
+            //update validSpot object as appropriate
+            validSpots[i] = curSpot;
+            if (doSW) {
+                validSpots[swIndex] = swSpot;
+            }
+
+            if (nwIndex < list.length) {
+                validSpots[nwIndex] = nwSpot;
+                if (wIndex < list.length) {
+                    validSpots[wIndex] = wSpot;
+                }
+            }
+            count++;
+        }, this); 
+
+        //TODO: subtract placed buildings. rely on fact that placed
+        //buildings will be located only at corners with a value of 1
+        //in the validSpots object.
     },
 
     _getHexMarkup: function() {

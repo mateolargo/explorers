@@ -32,11 +32,31 @@
     models.Player = Backbone.Model.extend({
         defaults: {
             name: 'Anonymous',
-            color: 'red',
-            unusedBuildings: { },
-            resources: new Backbone.Collection(),
-            devCards: new Backbone.Collection()
+            color: 'pink',
+            playable:false,
+            unusedRoads: 16,
+            unusedBuildings: null, 
+            resources: null,
+            devCards: null
+        },
+
+        initialize: function(options) {
+            var numSettlements = 5, numCities = 5;
+            var buildings = new Backbone.Collection();
+            for (var i = 0; i < numSettlements; i++) {
+                buildings.add(new models.Settlement());
+            }
+            for (var i = 0; i < numCities; i++) {
+                buildings.add(new models.City());
+            }
+
+            this.set({
+                devCards: new Backbone.Collection(),
+                resources: new Backbone.Collection(),
+                unusedBuildings: buildings
+            });
         }
+
     }, {//Static properties
         COLORS: { RED:'red', BLUE:'blue', GREEN:'green', ORANGE:'orange' } 
     });
@@ -47,20 +67,26 @@
     models.Game = Backbone.Model.extend({
         defaults: {
             mapSize: 'small',
-            players: new Backbone.Collection(),
+            players: null,
             robberLocation: null,
             whosTurn: null,
+            gameStage: null,
             devCardDeck: new models.Deck(),
             unusedResourceCards: { }
         },
 
-        initialize: function() {
+        initialize: function(options) {
             this.gameMap = new models.SOCMap({mapSize:this.get('mapSize')});
+            if (this.get('gameStage') === null) {
+                this.set({gameStage: models.Game.STAGES.PLACEMENT_1});
+            }
         },
 
         getCurrentPlayer: function() {
             return this.get('players').at(this.get('whosTurn'));
         }
+    }, {//Static properties
+        STAGES: { PLACEMENT_1: 1, PLACEMENT_2: 2, NORMAL: 3 }   
     });
 
     //=========================================================================
@@ -160,9 +186,38 @@
     }, {//Static properties
         TYPES: { UNKNOWN:0, WOOD:1, BRICK:2, WHEAT:3, SHEEP:4, ORE:5, DESERT:6, ANY:7 },
         CLASS_NAMES: { },
-        SIDES: { NE:1, E:2, SE:3, SW:4, W:5, NW:6 }
+        SIDES: { NE:1, E:2, SE:3, SW:4, W:5, NW:6 },
+        CORNERS: { N:1, NE:2, SE:3, S:4, SW:5, NW:6 }
     });
     
+    //=========================================================================
+    // Building 
+    //=========================================================================
+    models.Building = Backbone.Model.extend({
+        defaults: {
+            mapLocation: null
+        },
+
+        initialize: function(options) {
+
+        }
+    });
+
+    //=========================================================================
+    // Settlement
+    //=========================================================================
+    models.Settlement = models.Building.extend({
+
+    });
+
+
+    //=========================================================================
+    // City
+    //=========================================================================
+    models.City = models.Building.extend({
+
+    });
+
     //=========================================================================
     // ResourceCard
     //=========================================================================
@@ -180,6 +235,7 @@
         TYPES: { UNKNOWN:0, VICTORY_POINT:1, KNIGHT:2, YEAR_OF_PLENTY:3, MONOPOLY:4, ROAD_BUILDING:5 }
     });
     
+
     
 
 })();
