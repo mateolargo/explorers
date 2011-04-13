@@ -72,11 +72,16 @@
             whosTurn: null,
             gameStage: null,
             devCardDeck: new models.Deck(),
-            unusedResourceCards: { }
+            unusedResourceCards: { },
+            placedBuildings: new Backbone.Collection()
         },
 
         initialize: function(options) {
-            this.gameMap = new models.SOCMap({mapSize:this.get('mapSize')});
+            this.gameMap = new models.SOCMap({
+                mapSize:this.get('mapSize'),
+                placedBuildings:this.get('placedBuildings')
+            });
+            
             if (this.get('gameStage') === null) {
                 this.set({gameStage: models.Game.STAGES.PLACEMENT_1});
             }
@@ -96,12 +101,18 @@
         defaults: {
             mapSize: 'small',
             hexes: new models.Deck(),
-            ports: [],
-            placedBuildings: new Backbone.Collection()
+            ports: []
         },
         initialize: function() {
             this.populate(); //setup objects
             this.generate(); //randomize
+
+            if (this.get('mapSize') === 'small') {
+                this.rowLengths = [3,4,5,4,3];
+            } else {
+                this.rowLengths = [4,5,6,6,5,4];
+            }
+
         },
         populate: function() {
             var t = models.SOCHex.TYPES;
@@ -159,8 +170,49 @@
         },
         printMap: function() {
             return this.get('hexes').map(function(hex){ return hex.toString(); }).join(',');
-        }
+        },
 
+        getHexPosInfo: function(hexIndex) {
+            
+            var rls = this.rowLengths;
+            var prevRL = -1, curRL = rls[0], nextRL = rls[1];
+            var sum = curRL, i = 1;
+            while (sum < hexIndex+1) {
+                prevRL = curRL;
+                curRL = nextRL
+                nextRL = (i+1) === rls.length ? -1 : rls[++i];
+                sum += curRL;
+            }
+            var rowPos = hexIndex - (sum - curRL);
+            return { rowPos: rowPos, prevRL: prevRL, curRL: curRL, nextRL: nextRL };
+        },
+    }, { //static properties
+        SIDES: {NE:0,E:1,SE:2,SW:3,W:4,NW:5},
+        SMALL_MAP_ADJACENCY: [ //neighbor lookup: [NE,E,SE,SW,W,NW]
+            [3,4,1,null,null,null],
+            [4,5,2,null,null,'0'],
+            [5,6,null,null,null,1],
+
+            [7,8,4,'0',null,null],
+            [8,9,5,1,'0',3],
+            [9,10,6,2,1,4],
+            [10,11,null,null,2,5],
+
+            [null,12,8,3,null,null],
+            [12,13,9,4,3,7],
+            [13,14,10,5,4,8],
+            [14,15,11,6,5,9],
+            [15,null,null,null,6,10],
+
+            [null,16,13,8,7,null],
+            [16,17,14,9,8,12],
+            [17,18,15,10,9,13],
+            [18,null,null,11,10,14],
+
+            [null,null,17,13,12,null],
+            [null,null,18,14,13,16],
+            [null,null,null,15,14,17]
+        ]
     });
 
     //=========================================================================
@@ -168,6 +220,9 @@
     //=========================================================================
     models.SOCHex = Backbone.Model.extend({
         defaults: { type: 0, num: -999 },
+        initialize: function(options) {
+        },
+
         toString: function() { return '[' + this.get('type') + ', ' + this.get('num') + ']';},
         getClassName: function() {
             var t = models.SOCHex.TYPES;
@@ -195,7 +250,9 @@
     //=========================================================================
     models.Building = Backbone.Model.extend({
         defaults: {
-            mapLocation: null
+            hex: null,
+            corner: null,
+            owner: null
         },
 
         initialize: function(options) {

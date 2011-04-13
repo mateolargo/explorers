@@ -105,6 +105,8 @@
             .three .dots { background-position: 0 -20px;}
             .four .dots { background-position: 0 -10px;}
             .five .dots { background-position: 0 0px;}
+
+            .debug { color:blue; }
         </style>
     </head>
     <body>
@@ -122,7 +124,7 @@
             <div class="hexagon <%=hexSize%> <%= hexType %>" style="top:<%=top%>;left:<%=left%>;">
                 <div class="hex-top"></div>
                 <div class="hex-mid <%=hexNumClass%>">
-                    <% print(hexNum > 0 ? hexNum : '&nbsp;'); %>
+                    <% print(DEBUG ? '<span class="debug">'+index+'</span>' : (hexNum > 0 ? hexNum : '&nbsp;')); %>
                     <div class="dots"></div></div>
                 <div class="hex-bot"></div>
             </div>

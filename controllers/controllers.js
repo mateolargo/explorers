@@ -16,6 +16,11 @@ var Controller = function() {
         //console.warn('MAP: ', gameModel.gameMap.printMap());
         //console.warn('PLAYERS: ', gameModel.get('players').map(function(p){return p.get('name');}));
 
+        //DEBUG
+        var buildings = gameModel.get('placedBuildings');
+        buildings.add(new models.City({hex:0,corner:'NE'})); 
+        //END DEBUG
+
         var whosFirst = Math.floor(Math.random() * players.length);
         gameModel.set({'whosTurn': whosFirst}, SILENT);
         console.warn('GOING FIRST: ', gameModel.getCurrentPlayer().get('name'));

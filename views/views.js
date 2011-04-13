@@ -1,3 +1,4 @@
+DEBUG = true;
 var GameView = Backbone.View.extend({
 
     initialize: function(options) {
@@ -15,7 +16,6 @@ var GameView = Backbone.View.extend({
     },
 
     promptPlacement: function() {
-        this.mapView._getValidBuildingSpots();
     }
 });
 
@@ -58,6 +58,10 @@ var PlayerView = Backbone.View.extend({
 
 var MapView = Backbone.View.extend({
 
+    defaults: {
+        placedBuildings: []
+    },
+
     initialize: function(options) {
         _.bindAll(this, 'render', 'renderBuildings');
 
@@ -68,16 +72,15 @@ var MapView = Backbone.View.extend({
         //this.hexSize = 'small';
         this.hexSize = 'big';
 
-        this.rowLengthsSmall = [3,4,5,4,3];
-        this.rowLengthsBig = [4,5,6,6,5,4];
-
         //this.rowIndexesSmall = [3,7,12,16,19];
         //this.rowIndexesBig = [4,9,15,21,26,30];
         
         this.hexPositionsSmall = this._calculateHexPositions(mapSize,
-                                    this.rowLengthsSmall, 'small');
+                                    this.model.rowLengths, 'small');
         this.hexPositionsBig = this._calculateHexPositions(mapSize,
-                                    this.rowLengthsSmall, 'big');
+                                    this.model.rowLengths, 'big');
+        this.mapSpots = { };
+        this._initializeMapSpots();
     },
 
     _calculateHexPositions: function(mapSize, rowLengths, hexSize) {
@@ -96,7 +99,7 @@ var MapView = Backbone.View.extend({
             vOffset = MapView.VERT_OFFSET_BIG;
             hOffset = MapView.HORIZ_OFFSET_BIG;
         }
-        
+
         var curRowLength = rowLengths[0];
         var count = 0, curRow = 0;
         for (var i = 0, ilen = this.model.get('hexes').length; i < ilen; i++) {
@@ -131,21 +134,14 @@ var MapView = Backbone.View.extend({
         return this;
     },
 
-    renderBuildings: function() {
-        this.model.get('placedBuildings').forEach(function(building, i, list) {
-            console.warn("rendering building...", building);
-        }, this);
-    },
-
-    _getValidBuildingSpots: function() {
+    _initializeMapSpots: function() {
         //keys will be hex indeces. each key will have an object of the form
         //{N:1, NE:1, SE:1, S:1, SW:1, NW:1}
         //a 1 means available, a 2 means already accounted for (ignore it),
         //a 3 means a building is there, a 4 means a building is adjacent
-        var validSpots = { };
+        var mapSpots = this.mapSpots;
 
-        var rowLengths = this.model.get('mapSize') === 'big' ? 
-            this.rowLengthsBig : this.rowLengthsSmall;
+        var rowLengths = this.model.rowLengths;
 
         //This loop enumerates all possible valid spots, ignoring buildings
         var corner, count = 0;
@@ -156,7 +152,7 @@ var MapView = Backbone.View.extend({
             if (count === curRowLength - 1) {
                 swSpot = { }; doSW = false;
             } else {
-                swSpot = validSpots[swIndex] || { };
+                swSpot = mapSpots[swIndex] || { };
             }
 
             if (count === curRowLength) {
@@ -167,9 +163,9 @@ var MapView = Backbone.View.extend({
 
             var nwIndex = i + curRowLength, wIndex = nwIndex + 1;
             var swIndex = i + 1;
-            var curSpot = validSpots[i] || { };
-            var nwSpot = validSpots[nwIndex] || { };
-            var wSpot = validSpots[wIndex] || { };
+            var curSpot = mapSpots[i] || { };
+            var nwSpot = mapSpots[nwIndex] || { };
+            var wSpot = mapSpots[wIndex] || { };
 
             for (corner in models.SOCHex.CORNERS) {
                 curSpot[corner] = curSpot[corner] || 1;
@@ -192,23 +188,104 @@ var MapView = Backbone.View.extend({
             }
 
             //update validSpot object as appropriate
-            validSpots[i] = curSpot;
+            mapSpots[i] = curSpot;
             if (doSW) {
-                validSpots[swIndex] = swSpot;
+                mapSpots[swIndex] = swSpot;
             }
 
             if (nwIndex < list.length) {
-                validSpots[nwIndex] = nwSpot;
+                mapSpots[nwIndex] = nwSpot;
                 if (wIndex < list.length) {
-                    validSpots[wIndex] = wSpot;
+                    mapSpots[wIndex] = wSpot;
                 }
             }
             count++;
         }, this); 
 
-        //TODO: subtract placed buildings. rely on fact that placed
-        //buildings will be located only at corners with a value of 1
-        //in the validSpots object.
+
+        if (DEBUG) {
+            var s = true;
+            console.warn('checking MapView._getAdjacentCorners for accuracy...');
+            for (var index in mapSpots) {
+                var hex = mapSpots[index];
+                for (var corner in hex) {
+                    //console.warn(index, corner, hex[corner]);
+                    if (hex[corner] === 2) {continue;}
+
+                    var adjacent = this._getAdjacentCorners(index, corner);
+                    for (var j = 0; j < adjacent.length; j++) {
+                        var a = adjacent[j];
+                        if (mapSpots[a[0]][a[1]] !== 1) {
+                            s = false;
+                            console.warn("invalid adjacent spot: index = ", index, " corner = ", corner);
+                            console.warn(a);
+                        }
+                    }
+                }
+            }
+            console.warn(s ? 'SUCCESS' : 'FAILURE');
+        }
+        console.warn(this.mapSpots); 
+    },
+
+    renderBuildings: function() {
+        this.model.get('placedBuildings').forEach(function(building, index, list) {
+            this.renderBuilding(building);
+        }, this);
+    },
+
+    renderBuilding: function(building) {
+        var hexIndex = building.get('hex'), corner = building.get('corner');
+        this.mapSpots[hexIndex][corner] = 3;
+        _.forEach(this._getAdjacentCorners(hexIndex, corner), function(adjacent, index, list) {
+            this.mapSpots[adjacent[0]][adjacent[1]] = 4;
+            //TODO: actually render the building!
+        }, this);
+    },
+
+    _getAdjacentCorners: function(hexIndex, corner) {
+        var a = [];
+        var m_a = models.SOCMap.SMALL_MAP_ADJACENCY;
+        var hex_a = m_a[hexIndex];
+        var d = models.SOCMap.SIDES;
+        switch(corner) {
+            case 'N': //N, SE, SW
+                hex_a[d.NW] && a.push([hex_a[d.NW], 'NE']) || hex_a[d.NE] && a.push([hex_a[d.NE], 'NW']);
+                a.push([hexIndex, 'NE']);
+                hex_a[d.W] && a.push([hex_a[d.W], 'NE']) || a.push([hexIndex, 'NW']);
+                break;
+            case 'NE': //NW, NE, S
+                hex_a[d.NW] && a.push([hex_a[d.NW], 'SE']) || a.push([hexIndex, 'N']);
+                hex_a[d.NE] && a.push([hex_a[d.NE], 'SE']) || hex_a[d.E] && a.push([hex_a[d.E], 'N']);
+                a.push([hexIndex, 'SE']);
+                break;
+            case 'SE': //N, SE, SW
+                a.push([hexIndex, 'NE']);
+                hex_a[d.SW] && a.push([hex_a[d.SW], 'NE']) || hex_a[d.SE] && a.push([hex_a[d.SE], 'NE']);
+                hex_a[d.SW] && a.push([hex_a[d.SW], 'NE']) || a.push([hexIndex, 'S']);
+                break;
+            case 'S': //NE, S, NW
+                a.push([hexIndex, 'SE']);
+                hex_a[d.SW] && a.push([hex_a[d.SW], 'SE']) || hex_a[d.SE] && a.push([hex_a[d.SE], 'SW']);
+                hex_a[d.W] && a.push([hex_a[d.W], 'SE']) || a.push([hexIndex, 'SW']);
+                break;
+            case 'SW': //N, SE, SW
+                hex_a[d.NW] && a.push([hex_a[d.NW], 'S']) || a.push([hexIndex, 'NW']);
+                a.push([hexIndex, 'S']);
+                hex_a[d.W] && a.push([hex_a[d.W], 'S']) || hex_a[d.SW] && a.push([hex_a[d.SW], 'NW']);
+                break;
+            case 'NW': //NE, S, NW
+                hex_a[d.W] && a.push([hex_a[d.W], 'N']) || hex_a[d.NW] && a.push([hex_a[d.NW], 'SW']);
+                hex_a[d.W] && a.push([hex_a[d.W], 'SE']) || hex_a[d.SW] && a.push([hex_a[d.SW], 'N']) || a.push([hexIndex, 'SW']);
+                a.push([hexIndex, 'N']);
+                break;
+        }
+        //console.warn(a);
+        return a;
+    },
+
+    _getCornerSynonyms: function(hex, corner) {
+        
     },
 
     _getHexMarkup: function() {
@@ -222,7 +299,9 @@ var MapView = Backbone.View.extend({
                 hexNumClass: MapView.HEX_NUM_CLASS[hexNum],
                 hexSize: this.hexSize,
                 top: pos.top,
-                left: pos.left
+                left: pos.left,
+                index:index,
+                DEBUG:DEBUG
             };
             var markup = _.template(templateStr, context);
             return markup;
