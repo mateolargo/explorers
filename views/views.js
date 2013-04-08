@@ -16,6 +16,11 @@ var GameView = Backbone.View.extend({
     },
 
     promptPlacement: function() {
+        var player = this.model.getCurrentPlayer();
+        console.warn('Prompting building placement for: ' + player.get('name'));
+        this.mapView.promptPlacement(player, function (placement) {
+            console.warn(placement);
+        });
     }
 });
 
@@ -137,8 +142,7 @@ var MapView = Backbone.View.extend({
     _initializeMapSpots: function() {
         //keys will be hex indeces. each key will have an object of the form
         //{N:1, NE:1, SE:1, S:1, SW:1, NW:1}
-        //a 1 means available, a 2 means already accounted for (ignore it),
-        //a 3 means a building is there, a 4 means a building is adjacent
+        var states = MapView.CORNER_STATE;
         var mapSpots = this.mapSpots;
 
         var rowLengths = this.model.rowLengths;
@@ -168,21 +172,21 @@ var MapView = Backbone.View.extend({
             var wSpot = mapSpots[wIndex] || { };
 
             for (corner in models.SOCHex.CORNERS) {
-                curSpot[corner] = curSpot[corner] || 1;
+                curSpot[corner] = curSpot[corner] || states.OPEN;
                 switch(corner) {
                     case 'N':
-                        nwSpot['SW'] = nwSpot['SW'] || 2;
+                        nwSpot['SW'] = nwSpot['SW'] || states.IGNORE;
                         break;
                     case 'NE':
-                        nwSpot['S'] = nwSpot['S'] || 2;
-                        wSpot['NW'] = wSpot['NW'] || 2;
+                        nwSpot['S'] = nwSpot['S'] || states.IGNORE;
+                        wSpot['NW'] = wSpot['NW'] || states.IGNORE;
                         break;
                     case 'SE':
-                        wSpot['SW'] = wSpot['SW'] || 2;
-                        swSpot['N'] = swSpot['N'] || 2;
+                        wSpot['SW'] = wSpot['SW'] || states.IGNORE;
+                        swSpot['N'] = swSpot['N'] || states.IGNORE;
                         break;
                     case 'S':
-                        swSpot['NW'] = swSpot['NW'] || 2;
+                        swSpot['NW'] = swSpot['NW'] || states.IGNORE;
                         break;
                 }
             }
@@ -210,12 +214,12 @@ var MapView = Backbone.View.extend({
                 var hex = mapSpots[index];
                 for (var corner in hex) {
                     //console.warn(index, corner, hex[corner]);
-                    if (hex[corner] === 2) {continue;}
+                    if (hex[corner] === states.IGNORE) {continue;}
 
                     var adjacent = this._getAdjacentCorners(index, corner);
                     for (var j = 0; j < adjacent.length; j++) {
                         var a = adjacent[j];
-                        if (mapSpots[a[0]][a[1]] !== 1) {
+                        if (mapSpots[a[0]][a[1]] !== states.OPEN) {
                             s = false;
                             console.warn("invalid adjacent spot: index = ", index, " corner = ", corner);
                             console.warn(a);
@@ -225,7 +229,7 @@ var MapView = Backbone.View.extend({
             }
             console.warn(s ? 'SUCCESS' : 'FAILURE');
         }
-        console.warn(this.mapSpots); 
+        //console.warn(this.mapSpots); 
     },
 
     renderBuildings: function() {
@@ -236,11 +240,27 @@ var MapView = Backbone.View.extend({
 
     renderBuilding: function(building) {
         var hexIndex = building.get('hex'), corner = building.get('corner');
-        this.mapSpots[hexIndex][corner] = 3;
+        this.mapSpots[hexIndex][corner] = MapView.CORNER_STATE.BUILDING;
         _.forEach(this._getAdjacentCorners(hexIndex, corner), function(adjacent, index, list) {
-            this.mapSpots[adjacent[0]][adjacent[1]] = 4;
+            this.mapSpots[adjacent[0]][adjacent[1]] = MapView.CORNER_STATE.ADJACENT;
+            this._showAtCorner(hexIndex, corner, build.get('owner'), 'real');
             //TODO: actually render the building!
         }, this);
+    },
+
+    promptPlacement: function(player, callback) {
+        _.each(this.mapSpots, function(hex, i, list) {
+            for (var corner in hex) {
+                if (hex[corner] === MapView.CORNER_STATE.OPEN) {
+                    this._showAtCorner(i, corner, player, 'ghost');
+                }
+            }
+        }, this);
+    },
+
+    _showAtCorner: function(hexIndex, corner, player, type) {
+        var pos = this._getHexPosition(hexIndex);
+        console.warn(pos);
     },
 
     _getAdjacentCorners: function(hexIndex, corner) {
@@ -316,5 +336,16 @@ var MapView = Backbone.View.extend({
     VERT_OFFSET_SMALL: 80, HORIZ_OFFSET_SMALL: 40,
     VERT_OFFSET_BIG:  120, HORIZ_OFFSET_BIG:   60,
     HEX_NUM_CLASS: { 2:'one', 3:'two', 4:'three', 5:'four', 6:'five', 8:'five',
-                     9:'four', 10:'three', 11:'two', 12:'one' }
+                     9:'four', 10:'three', 11:'two', 12:'one' },
+    CORNER_STATE: { OPEN: 1, IGNORE: 2, BUILDING: 3, ADJACENT: 4 }
+});
+
+var BuildingView = Backbone.View.extend({
+    defaults: {
+
+    },
+
+    render: function() {
+
+    }
 });

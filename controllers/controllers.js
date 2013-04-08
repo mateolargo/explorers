@@ -23,7 +23,6 @@ var Controller = function() {
 
         var whosFirst = Math.floor(Math.random() * players.length);
         gameModel.set({'whosTurn': whosFirst}, SILENT);
-        console.warn('GOING FIRST: ', gameModel.getCurrentPlayer().get('name'));
 
         gameView = new GameView({model: gameModel, el: $('#Game')});
 
